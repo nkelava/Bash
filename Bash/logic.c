@@ -4,14 +4,14 @@
 #include <unistd.h>
 #include <string.h>
 
-#define SHELL_RL_BUFSIZE 1024
-#define SHELL_TOK_BUFSIZE 64
-#define SHELL_TOK_DELIM " \t\r\n\a"
+#define BASH_RL_BUFSIZE 1024
+#define BASH_TOK_BUFSIZE 64
+#define BASH_TOK_DELIM " \t\r\n\a"
 
 #include "builtins.h"
 
 
-int shell_launch(char **args) {
+int bash_launch(char **args) {
 	pid_t pid, wpid;
 	int status;
 
@@ -25,7 +25,7 @@ int shell_launch(char **args) {
 		exit(EXIT_FAILURE);
 	} else if (pid < 0) {
 		// Error forking
-		perror("Shell");
+		perror("bash");
 	} else {
 		// Parent process
 		do {
@@ -36,8 +36,9 @@ int shell_launch(char **args) {
 }
 
 
-int shell_execute(char **args) {
-	int i, num_of_builtins = shell_builtins_count();
+int bash_execute(char **args) {
+	int i, num_of_builtins = bash_builtins_count();
+    int error = 0;
 
 	if (args[0] == NULL) {
 		// Empty command was entered
@@ -49,47 +50,47 @@ int shell_execute(char **args) {
             return get_builtin_function(i, args);
 		}
 	}
-	return shell_launch(args);
+	return bash_launch(args);
 }
 
 
-char **shell_split_line(char *line) {
-	int bufsize = SHELL_TOK_BUFSIZE, position = 0;
+char **bash_split_line(char *line) {
+	int bufsize = BASH_TOK_BUFSIZE, position = 0;
 	char **tokens = malloc(bufsize * sizeof(char));
 	char *token;
 
 	if(!tokens) {
-		fprintf(stderr, "Shell: allocation error\n");
+		fprintf(stderr, "bash: allocation error\n");
 		exit(EXIT_FAILURE);
 	}
 
-	token = strtok(line, SHELL_TOK_DELIM);
+	token = strtok(line, BASH_TOK_DELIM);
 	while(token != NULL) {
 		tokens[position] = token;
 		++position;
 
 		if (position >= bufsize) {
-			bufsize += SHELL_TOK_BUFSIZE;
+			bufsize += BASH_TOK_BUFSIZE;
 			tokens = realloc(tokens, bufsize * sizeof(char*));
 
 			if(!tokens) {
-				fprintf(stderr, "Shell: allocation error\n");
+				fprintf(stderr, "bash: allocation error\n");
 				exit(EXIT_FAILURE);
 			}
 		}
-		token = strtok(NULL, SHELL_TOK_DELIM);
+		token = strtok(NULL, BASH_TOK_DELIM);
 	}
 	tokens[position] = NULL;
 	return tokens;
 }
 
 
-char *shell_read_line() {
-	int bufsize = SHELL_RL_BUFSIZE, position = 0, c;
+char *bash_read_line() {
+	int bufsize = BASH_RL_BUFSIZE, position = 0, c;
 	char *buffer = malloc(bufsize * sizeof(char));
 
 	if(!buffer) {
-		fprintf(stderr, "Shell: allocation error\n");
+		fprintf(stderr, "bash: allocation error\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -108,10 +109,10 @@ char *shell_read_line() {
 
 		// If we have exceeded the buffer, reallocate
 		if (position >= bufsize) {
-			bufsize += SHELL_RL_BUFSIZE;
+			bufsize += BASH_RL_BUFSIZE;
 			buffer = realloc(buffer, bufsize);
 			if(!buffer) {
-				fprintf(stderr, "Shell: allocation error\n");
+				fprintf(stderr, "bash: allocation error\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -119,15 +120,15 @@ char *shell_read_line() {
 }
 
 
-void shell_loop() {
+void bash_loop() {
 	char *line, **args;
 	int status;
 
 	do {
 		printf("> ");
-		line = shell_read_line();
-		args = shell_split_line(line);
-		status = shell_execute(args);
+		line = bash_read_line();
+		args = bash_split_line(line);
+		status = bash_execute(args);
 
 		free(line);
 		free(args);
