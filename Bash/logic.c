@@ -9,6 +9,7 @@
 #define BASH_TOK_DELIM " \t\r\n\a"
 
 #include "builtins.h"
+#include "arguments.h"
 
 
 int bash_launch(char **args) {
@@ -20,7 +21,7 @@ int bash_launch(char **args) {
 	if(pid == 0) {
 		// Child process
 		if(execvp(args[0], args) == -1) {
-			perror("Shell");
+			perror("bash");
 		}
 		exit(EXIT_FAILURE);
 	} else if (pid < 0) {
@@ -36,18 +37,24 @@ int bash_launch(char **args) {
 }
 
 
-int bash_execute(char **args) {
-	int i, num_of_builtins = bash_builtins_count();
-    int error = 0;
-
-	if (args[0] == NULL) {
-		// Empty command was entered
+int bash_execute(char **args, const char *home_directory) {
+	int index, num_of_builtins = bash_builtins_count();
+    int last_element_index = get_args_count(args);
+    int args_size = get_args_size(args);
+    // Allocate more space for args than put home directory path at the end 
+    args = realloc(args, (args_size + strlen(home_directory)) * sizeof(char *));
+   
+	if ((args[0] == NULL) || (args == NULL)) {
+		// Empty command was entered or reallocation failed
 		return 1;
 	}
 
-	for(i = 0; i < num_of_builtins; ++i) {
-		if(strcmp(args[0], (const char *)get_builtin_string(i)) == 0) {
-            return get_builtin_function(i, args);
+    args[last_element_index] = (char *)home_directory;
+   
+	for(index = 0; index < num_of_builtins; ++index) {
+		if(strcmp(args[0], get_builtin_string(index)) == 0) {
+            // Return get_builtin_function(i, args);
+            return get_builtin_function(index, args);
 		}
 	}
 	return bash_launch(args);
@@ -56,7 +63,7 @@ int bash_execute(char **args) {
 
 char **bash_split_line(char *line) {
 	int bufsize = BASH_TOK_BUFSIZE, position = 0;
-	char **tokens = malloc(bufsize * sizeof(char));
+	char **tokens = (char **)malloc(bufsize * sizeof(char *));
 	char *token;
 
 	if(!tokens) {
@@ -65,13 +72,14 @@ char **bash_split_line(char *line) {
 	}
 
 	token = strtok(line, BASH_TOK_DELIM);
-	while(token != NULL) {
+	
+    while(token != NULL) {
 		tokens[position] = token;
 		++position;
 
 		if (position >= bufsize) {
 			bufsize += BASH_TOK_BUFSIZE;
-			tokens = realloc(tokens, bufsize * sizeof(char*));
+			tokens = realloc(tokens, bufsize * sizeof(char *));
 
 			if(!tokens) {
 				fprintf(stderr, "bash: allocation error\n");
@@ -81,13 +89,14 @@ char **bash_split_line(char *line) {
 		token = strtok(NULL, BASH_TOK_DELIM);
 	}
 	tokens[position] = NULL;
-	return tokens;
+	
+    return tokens;
 }
 
 
 char *bash_read_line() {
-	int bufsize = BASH_RL_BUFSIZE, position = 0, c;
-	char *buffer = malloc(bufsize * sizeof(char));
+	int bufsize = BASH_RL_BUFSIZE, position = 0, character;
+	char *buffer = (char *)malloc(bufsize * sizeof(char));
 
 	if(!buffer) {
 		fprintf(stderr, "bash: allocation error\n");
@@ -95,15 +104,15 @@ char *bash_read_line() {
 	}
 
 	while(1) {
-		c = getchar();
+		character = getchar();
 
 		// If EOF is hit, replace it with null char and return
-		if ( c == EOF || c == '\n') {
+		if ((character == EOF) || (character == '\n')) {
 			buffer[position] = '\0';
 			return buffer;
 		}
 		else {
-			buffer[position] = c;
+			buffer[position] = character;
 		}
 		++position;
 
@@ -111,6 +120,7 @@ char *bash_read_line() {
 		if (position >= bufsize) {
 			bufsize += BASH_RL_BUFSIZE;
 			buffer = realloc(buffer, bufsize);
+
 			if(!buffer) {
 				fprintf(stderr, "bash: allocation error\n");
 				exit(EXIT_FAILURE);
@@ -123,16 +133,18 @@ char *bash_read_line() {
 void bash_loop() {
 	char *line, **args;
 	int status;
+    const char *home_directory = strcat(getenv("HOME"), "/");
 
 	do {
 		printf("> ");
 		line = bash_read_line();
 		args = bash_split_line(line);
-		status = bash_execute(args);
+		status = bash_execute(args, home_directory);
 
 		free(line);
 		free(args);
 	} while(status);
 }
+
 
 
