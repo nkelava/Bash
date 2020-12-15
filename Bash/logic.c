@@ -4,15 +4,19 @@
 #include <unistd.h>
 #include <string.h>
 
-#define BASH_RL_BUFSIZE 1024
-#define BASH_TOK_BUFSIZE 64
-#define BASH_TOK_DELIM " \t\r\n\a"
+#define CWD_BUFSIZE         256
+#define BASH_RL_BUFSIZE     1024
+#define BASH_TOK_BUFSIZE    64
+#define BASH_TOK_DELIM      " \t\r\n\a"
+#define COLOR_RED(string)       "\x1b[31m" string "\x1b[0m"
+#define COLOR_YELLOW(string)    "\x1b[33m" string "\x1b[0m"
 
 #include "builtins.h"
 #include "arguments.h"
 
 
-int bash_launch(char **args) {
+int bash_launch(char **args)
+{
 	pid_t pid, wpid;
 	int status;
 
@@ -21,12 +25,12 @@ int bash_launch(char **args) {
 	if(pid == 0) {
 		// Child process
 		if(execvp(args[0], args) == -1) {
-			perror("bash");
+			perror(COLOR_RED("bash"));
 		}
 		exit(EXIT_FAILURE);
 	} else if (pid < 0) {
 		// Error forking
-		perror("bash");
+		perror(COLOR_RED("bash"));
 	} else {
 		// Parent process
 		do {
@@ -37,7 +41,8 @@ int bash_launch(char **args) {
 }
 
 
-int bash_execute(char **args, const char *home_directory) {
+int bash_execute(char **args, const char *home_directory)
+{
 	int index, num_of_builtins = bash_builtins_count();
     int last_element_index = get_args_count(args);
     int args_size = get_args_size(args);
@@ -61,13 +66,14 @@ int bash_execute(char **args, const char *home_directory) {
 }
 
 
-char **bash_split_line(char *line) {
+char **bash_split_line(char *line)
+{
 	int bufsize = BASH_TOK_BUFSIZE, position = 0;
 	char **tokens = (char **)malloc(bufsize * sizeof(char *));
 	char *token;
 
 	if(!tokens) {
-		fprintf(stderr, "bash: allocation error\n");
+		fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -82,7 +88,7 @@ char **bash_split_line(char *line) {
 			tokens = realloc(tokens, bufsize * sizeof(char *));
 
 			if(!tokens) {
-				fprintf(stderr, "bash: allocation error\n");
+				fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -94,12 +100,13 @@ char **bash_split_line(char *line) {
 }
 
 
-char *bash_read_line() {
+char *bash_read_line()
+{
 	int bufsize = BASH_RL_BUFSIZE, position = 0, character;
 	char *buffer = (char *)malloc(bufsize * sizeof(char));
 
 	if(!buffer) {
-		fprintf(stderr, "bash: allocation error\n");
+		fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -122,7 +129,7 @@ char *bash_read_line() {
 			buffer = realloc(buffer, bufsize);
 
 			if(!buffer) {
-				fprintf(stderr, "bash: allocation error\n");
+				fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -130,13 +137,14 @@ char *bash_read_line() {
 }
 
 
-void bash_loop() {
-	char *line, **args;
+void bash_loop()
+{
 	int status;
+	char *line, **args, *cwd = (char *)malloc(CWD_BUFSIZE);
     const char *home_directory = strcat(getenv("HOME"), "/");
 
 	do {
-		printf("> ");
+        printf(COLOR_YELLOW("%s") "> ", getcwd(cwd, CWD_BUFSIZE));
 		line = bash_read_line();
 		args = bash_split_line(line);
 		status = bash_execute(args, home_directory);
