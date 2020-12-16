@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <time.h> 
 #include <string.h>
+#include <sys/types.h>
+#include <dirent.h>
 
 #define BASH_CWD_BUFSIZE        256
 #define COLOR_RED(string)       "\x1b[31m" string "\x1b[0m"
@@ -22,6 +24,7 @@ int bash_tilde(char **args);
 int bash_pwd(char **args);
 int bash_echo(char **args);
 int bash_time(char **args);
+int bash_ls(char **args);
 
 
 char *builtin_str[] = {
@@ -35,6 +38,7 @@ char *builtin_str[] = {
     "pwd",
     "echo",
     "time",
+    "ls"
 };
 
 
@@ -48,7 +52,8 @@ int (*builtin_func[])(char **) = {
     &bash_home,
     &bash_pwd,
     &bash_echo,
-    &bash_time
+    &bash_time,
+    &bash_ls
 };
 
 
@@ -77,28 +82,8 @@ int bash_cd(char **args)
 	} 
     // Swap ~ or ./ with full home/current directory location
     else {
-        // Handle home directory cases
-        if (args[1][0] == '~') {
-            int last_element_index = get_args_count(args) - 1;
+        handle_path(args);
 
-            strcpy(args[1], modify_path(args[1], args[last_element_index]));
-        }
-        // Handle current working directory cases
-        else {
-            char cwd[BASH_CWD_BUFSIZE];
-            getcwd(cwd, BASH_CWD_BUFSIZE);
-
-            if(args[1][1] != '.') {
-                strcpy(args[1], modify_path(args[1], strcat(cwd, "/")));
-            }
-            // Handling moving up('../../...') cases
-            else {
-                int move_up_count = count_moving_up(args[1]);
-
-                cut_cwd_path(cwd, move_up_count);
-                strcpy(args[1], strcat(cwd, args[1]));
-            }
-        }
 		if(chdir(args[1]) != 0) {
 			perror(COLOR_RED("bash"));
 		}
@@ -110,7 +95,7 @@ int bash_cd(char **args)
 int bash_help(char **args)
 {
 	int index, num_of_builtins = bash_builtins_count();
-	
+
     printf(COLOR_CYAN("Bash Shell") "\n");
 	printf("Type program names and arguments, and hit enter.\n");
 	printf("The following functions are built in: \n");
@@ -203,6 +188,32 @@ int bash_time(char **args)
 
     time(&current_time);
     printf("Current time: %s", ctime(&current_time));
+
+    return 1;
+}
+
+
+int bash_ls(char **args)
+{
+    DIR *dir_stream;
+    struct dirent *dir_ptr;
+
+    handle_path(args);
+
+    if((dir_stream = opendir(args[1])) == NULL) {
+        perror(COLOR_RED("bash"));
+        return 1;
+    }
+    
+    while((dir_ptr = readdir(dir_stream)) != NULL)
+    {
+        if(dir_ptr->d_name[0] != '.') {
+            printf("%s\n", dir_ptr->d_name);
+        }
+    }
+
+    rewinddir(dir_stream);
+    closedir(dir_stream);
 
     return 1;
 }

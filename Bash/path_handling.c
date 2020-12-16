@@ -1,7 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+
+#include "arguments.h"
+
+#define BASH_CWD_BUFSIZE    256
 
 
 char *modify_path(char *args_path, char *base_directory)
@@ -27,7 +32,6 @@ void cut_cwd_path(char *cwd, int move_up_count)
     int counter = 0;
     
     while(counter < move_up_count) {
-    // Bug ../../../../home still works even tho it cant go back that much it goes to the end than adds home
         while((cwd[last_slash_index] != '/')  && (last_slash_index > 0))
         {
             --last_slash_index;
@@ -54,6 +58,39 @@ int count_moving_up(char *args_path)
     memmove(args_path, args_path + index, args_path_len);
     
     return counter;
+}
+
+
+void handle_path(char **args)
+{
+    // Handle "." cases
+    if(args[1][0] == '.') {
+        char cwd[BASH_CWD_BUFSIZE];
+        getcwd(cwd, BASH_CWD_BUFSIZE);
+        // Handle current working directory cases
+        if(args[1][1] != '.') {
+            strcpy(args[1], modify_path(args[1], strcat(cwd, "/")));
+        }
+        // Handling moving up('../../...') cases
+        else {
+            int move_up_count = count_moving_up(args[1]);
+
+            cut_cwd_path(cwd, move_up_count);
+            strcpy(args[1], strcat(cwd, args[1]));
+        }
+    }
+    // Handle home directory cases
+    else if(args[1][0] == '~') {
+        int last_element_index = get_args_count(args) - 1;
+
+        strcpy(args[1], modify_path(args[1], args[last_element_index]));
+    }
+    // Handle root directory case
+    else {
+        if(args[1][0] == '/' && strlen(args[1]) == 1) {
+            strcpy(args[1], "/");        
+        }
+    }
 }
  
 
