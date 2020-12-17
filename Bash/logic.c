@@ -6,7 +6,7 @@
 
 #define CWD_BUFSIZE         256
 #define BASH_RL_BUFSIZE     1024
-#define BASH_TOK_BUFSIZE    64
+#define BASH_TOK_BUFSIZE    256
 #define BASH_TOK_DELIM      " \t\r\n\a"
 #define COLOR_RED(string)       "\x1b[31m" string "\x1b[0m"
 #define COLOR_YELLOW(string)    "\x1b[33m" string "\x1b[0m"

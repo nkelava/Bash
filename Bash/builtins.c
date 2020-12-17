@@ -25,6 +25,7 @@ int bash_pwd(char **args);
 int bash_echo(char **args);
 int bash_time(char **args);
 int bash_ls(char **args);
+int bash_touch(char **args);
 
 
 char *builtin_str[] = {
@@ -38,7 +39,8 @@ char *builtin_str[] = {
     "pwd",
     "echo",
     "time",
-    "ls"
+    "ls",
+    "touch"
 };
 
 
@@ -53,7 +55,8 @@ int (*builtin_func[])(char **) = {
     &bash_pwd,
     &bash_echo,
     &bash_time,
-    &bash_ls
+    &bash_ls,
+    &bash_touch
 };
 
 
@@ -215,6 +218,26 @@ int bash_ls(char **args)
     rewinddir(dir_stream);
     closedir(dir_stream);
 
+    return 1;
+}
+
+
+int bash_touch(char **args)
+{
+    int index;
+    int args_count = get_args_count(args) - 1;
+    
+    handle_path(args);
+
+    for(index = 1; index < args_count; ++index) {
+        FILE* file_ptr = fopen(args[index], "w+");
+
+        if(!file_ptr) {
+            fprintf(stderr, COLOR_RED("bash") ": couldn't create the file.\n");
+        }
+
+        fclose(file_ptr);
+    }
     return 1;
 }
 
