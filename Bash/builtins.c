@@ -83,7 +83,7 @@ int bash_builtins_count()
 
 int bash_cd(char **args)
 {
-	if (args[1] == NULL) {
+	if (!args[1]) {
 		fprintf(stderr, COLOR_RED("bash") ": expected argument to \"cd\"\n");
 	} 
     // Swap ~ or ./ with full home/current directory location
@@ -162,7 +162,7 @@ int bash_pwd(char **args)
 
     if(!cwd) {
         fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
-        return 1;
+        exit(EXIT_FAILURE);
     }
     
     printf("%s\n", getcwd(cwd, BASH_CWD_BUFSIZE));
@@ -178,7 +178,7 @@ int bash_echo(char **args)
     const int args_count = get_args_count(args) - 1;  // -1 because last element of args is home directory path
 
     // If there is no argument to then echo print empty string
-    if (args[1] == NULL) {
+    if (!args[1]) {
 		args[1] = "";
 	}
     
@@ -208,7 +208,7 @@ int bash_ls(char **args)
     DIR *dir_stream;
     struct dirent *dir_ptr;
 
-    if((dir_stream = opendir(args[1])) == NULL) {
+    if(!(dir_stream = opendir(args[1]))) {
         perror(COLOR_RED("bash"));
         return 1;
     }
@@ -257,6 +257,10 @@ int bash_cat(char **args)
         if(!file_ptr) {
             fprintf(stderr, COLOR_RED("bash") ": couldn't read the file.\n");
             return 1;
+        }
+        else if(!line) {
+            fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
+            exit(EXIT_FAILURE);
         }
         else {
             while(fgets(line, FILE_BUFFER_SIZE, file_ptr)) {

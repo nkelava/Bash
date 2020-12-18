@@ -48,7 +48,7 @@ int bash_execute(char **args)
 	int index;
     int num_of_builtins = bash_builtins_count();
     
-	if (args[0] == NULL) {
+	if (!args[0]) {
 		// Empty command was entered
 		return 1;
 	}
@@ -141,6 +141,11 @@ void bash_loop()
 	char *line, **args;
     char *cwd = malloc(BASH_CWD_BUFSIZE * sizeof(char));
     const char *home_directory = strcat(getenv("HOME"), "/");
+
+    if(!cwd) {
+        fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
+        exit(EXIT_FAILURE);
+    }
 
 	do {
         printf(COLOR_YELLOW("%s") "> ", getcwd(cwd, BASH_CWD_BUFSIZE));
