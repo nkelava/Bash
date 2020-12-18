@@ -62,6 +62,7 @@ int count_moving_up(char *args_path)
         ++counter;     
         index += 3;
     }
+
     memmove(args_path, args_path + index, args_path_len);
 
     return counter;

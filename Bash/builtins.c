@@ -27,6 +27,7 @@ int bash_time(char **args);
 int bash_ls(char **args);
 int bash_touch(char **args);
 int bash_cat(char **args);
+int bash_cp(char **args);
 
 
 char *builtin_str[] = {
@@ -42,7 +43,8 @@ char *builtin_str[] = {
     "time",
     "ls",
     "touch",
-    "cat"
+    "cat",
+    "cp"
 };
 
 
@@ -59,7 +61,8 @@ int (*builtin_func[])(char **) = {
     &bash_time,
     &bash_ls,
     &bash_touch,
-    &bash_cat
+    &bash_cat,
+    &bash_cp
 };
 
 
@@ -270,6 +273,43 @@ int bash_cat(char **args)
         free(line);
         fclose(file_ptr);
     }
+    return 1;
+}
+
+
+int bash_cp(char **args)
+{
+    char ch;
+    int index;
+    const int args_count = get_args_count(args) - 1;
+    const int dest_file_index = args_count - 1;
+    FILE *dest_file = fopen(args[dest_file_index], "a");
+
+    if(!dest_file) {
+        fprintf(stderr, COLOR_RED("bash") ": couldn't find/open the file.\n");
+        return 1;
+     }
+
+    // If file doesnt' exist then create it
+
+    for(index = 1; index < dest_file_index; ++index) {
+        FILE *src_file = fopen(args[index], "r");
+
+        if(!src_file) {
+            fprintf(stderr, COLOR_RED("bash") ": couldn't find/read the file.\n");
+            fclose(dest_file);
+            return 1;
+        }
+
+        while((ch = fgetc(src_file)) != EOF) {
+            fputc(ch, dest_file);
+        }
+        
+        rewind(src_file);
+        fclose(src_file);
+    }
+
+    fclose(dest_file);
     return 1;
 }
 
