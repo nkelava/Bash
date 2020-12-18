@@ -3,7 +3,7 @@
 
 
 int get_args_count(char **args);
-int get_args_size(char **args);
+void free_args(char **args, int last_element_index);
 
 
 #endif

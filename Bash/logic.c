@@ -4,15 +4,16 @@
 #include <unistd.h>
 #include <string.h>
 
-#define CWD_BUFSIZE         256
+#define BASH_CWD_BUFSIZE         256
 #define BASH_RL_BUFSIZE     1024
-#define BASH_TOK_BUFSIZE    256
+#define BASH_TOK_BUFSIZE    64
 #define BASH_TOK_DELIM      " \t\r\n\a"
 #define COLOR_RED(string)       "\x1b[31m" string "\x1b[0m"
 #define COLOR_YELLOW(string)    "\x1b[33m" string "\x1b[0m"
 
 #include "builtins.h"
 #include "arguments.h"
+#include "path_handling.h"
 
 
 int bash_launch(char **args)
@@ -37,25 +38,21 @@ int bash_launch(char **args)
 			wpid = waitpid(pid, &status, WUNTRACED);
 		} while(!WIFEXITED(status) && !WIFSIGNALED(status));
 	}
+    free(args);
 	return 1;
 }
 
 
-int bash_execute(char **args, const char *home_directory)
+int bash_execute(char **args)
 {
-	int index, num_of_builtins = bash_builtins_count();
-    int last_element_index = get_args_count(args);
-    int args_size = get_args_size(args);
-    // Allocate more space for args than put home directory path at the end 
-    args = realloc(args, (args_size + strlen(home_directory)) * sizeof(char *));
-   
-	if ((args[0] == NULL) || (args == NULL)) {
-		// Empty command was entered or reallocation failed
+	int index;
+    int num_of_builtins = bash_builtins_count();
+    
+	if (args[0] == NULL) {
+		// Empty command was entered
 		return 1;
 	}
 
-    args[last_element_index] = (char *)home_directory;
-   
 	for(index = 0; index < num_of_builtins; ++index) {
 		if(strcmp(args[0], get_builtin_string(index)) == 0) {
             // Return get_builtin_function(i, args);
@@ -69,7 +66,7 @@ int bash_execute(char **args, const char *home_directory)
 char **bash_split_line(char *line)
 {
 	int bufsize = BASH_TOK_BUFSIZE, position = 0;
-	char **tokens = (char **)malloc(bufsize * sizeof(char *));
+	char **tokens = malloc(bufsize * sizeof(char *));
 	char *token;
 
 	if(!tokens) {
@@ -103,7 +100,7 @@ char **bash_split_line(char *line)
 char *bash_read_line()
 {
 	int bufsize = BASH_RL_BUFSIZE, position = 0, character;
-	char *buffer = (char *)malloc(bufsize * sizeof(char));
+	char *buffer = malloc(bufsize * sizeof(char));
 
 	if(!buffer) {
 		fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
@@ -126,7 +123,7 @@ char *bash_read_line()
 		// If we have exceeded the buffer, reallocate
 		if (position >= bufsize) {
 			bufsize += BASH_RL_BUFSIZE;
-			buffer = realloc(buffer, bufsize);
+			buffer = realloc(buffer, bufsize * sizeof(char));
 
 			if(!buffer) {
 				fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
@@ -140,17 +137,25 @@ char *bash_read_line()
 void bash_loop()
 {
 	int status;
-	char *line, **args, *cwd = (char *)malloc(CWD_BUFSIZE);
+    int last_element_index;
+	char *line, **args;
+    char *cwd = malloc(BASH_CWD_BUFSIZE * sizeof(char));
     const char *home_directory = strcat(getenv("HOME"), "/");
 
 	do {
-        printf(COLOR_YELLOW("%s") "> ", getcwd(cwd, CWD_BUFSIZE));
+        printf(COLOR_YELLOW("%s") "> ", getcwd(cwd, BASH_CWD_BUFSIZE));
 		line = bash_read_line();
 		args = bash_split_line(line);
-		status = bash_execute(args, home_directory);
+        // Add home directory path at the end
+        last_element_index = get_args_count(args);
+        args[last_element_index] = (char *)home_directory;
+        
+        handle_path(args);
+		status = bash_execute(args);
 
 		free(line);
-		free(args);
+        line = NULL;
+		free_args(args, last_element_index);
 	} while(status);
 }
 

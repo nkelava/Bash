@@ -7,6 +7,7 @@
 #include "arguments.h"
 
 #define BASH_CWD_BUFSIZE    256
+#define COLOR_RED(string)       "\x1b[31m" string "\x1b[0m"
 
 
 char *modify_path(char *args_path, char *base_directory)
@@ -15,11 +16,16 @@ char *modify_path(char *args_path, char *base_directory)
     // Move 1 position if it's only ~. move 2 if it's ~/ or ./ or don't move at all if it's none of them
     // If it's none of them than add current dir path
     // Reason for moving two spaces if there is / on second index is because / is added at the end of base string
-    int offset = (args_path[1] == '/') ? 2 : ((isalpha(args_path[0])) ? 0 : 1);
+    const int offset = (args_path[1] == '/') ? 2 : ((isalpha(args_path[0])) ? 0 : 1);
     const int args_path_len = strlen(args_path);
-    int total_size = args_path_len - offset + strlen(base_directory);
+    const int total_size = args_path_len - offset + strlen(base_directory);
+    char *full_path = malloc(total_size * sizeof(char));
+
+    if(!full_path) {
+        fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
+		return args_path;
+    }
     
-    char *full_path = (char*)malloc((args_path_len - offset + strlen(base_directory)) * sizeof(char));
     memmove(args_path, args_path + offset, args_path_len);
     strcat(strcpy(full_path, base_directory), args_path);
 
@@ -64,19 +70,16 @@ int count_moving_up(char *args_path)
 
 void handle_path(char **args)
 {
-    int index, i;
+    int index;
     const int last_element_index = get_args_count(args) - 1;
 
-    char *home_dir = malloc(strlen(args[last_element_index]));
-    strcpy(home_dir, args[last_element_index]);
-    
     // Loop for commands that have multiple arguments for example "touch file1 file2"
     for(index = 1; index < last_element_index; ++index) {
-        char *args_path = malloc(strlen(args[index]));
+        char *args_path = malloc(strlen(args[index]) * sizeof(char));
         strcpy(args_path, args[index]);
         
         // Handle "." cases
-        if(args_path[0] == '.') {
+        if((args_path[0] == '.') || isalpha(args_path[0])) {
             char cwd[BASH_CWD_BUFSIZE];
             getcwd(cwd, BASH_CWD_BUFSIZE);
             // Handle current working directory cases
@@ -93,7 +96,7 @@ void handle_path(char **args)
         }
         // Handle home directory cases
         else if(args_path[0] == '~') {
-            strcpy(args_path, modify_path(args_path, home_dir));
+            strcpy(args_path, modify_path(args_path, args[last_element_index]));
         }
         // Handle root directory case
         else {
@@ -101,11 +104,7 @@ void handle_path(char **args)
                 strcpy(args_path, "/");    
             }
         }
-        // fix this inside modify, check for size... memory problem with strcpy args[index]
-        args[index] = malloc(strlen(args_path));
-        strcpy(args[index], args_path);
-        
-        free(args_path);          
+        args[index] = args_path;        
     }
 }
  

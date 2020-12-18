@@ -7,11 +7,11 @@
 #include <dirent.h>
 
 #define BASH_CWD_BUFSIZE        256
+#define FILE_BUFFER_SIZE        1024
 #define COLOR_RED(string)       "\x1b[31m" string "\x1b[0m"
 #define COLOR_CYAN(string)      "\x1b[36m" string "\x1b[0m"
 
 #include "arguments.h"
-#include "path_handling.h"
 
 
 int bash_cd(char **args);
@@ -26,6 +26,7 @@ int bash_echo(char **args);
 int bash_time(char **args);
 int bash_ls(char **args);
 int bash_touch(char **args);
+int bash_cat(char **args);
 
 
 char *builtin_str[] = {
@@ -40,7 +41,8 @@ char *builtin_str[] = {
     "echo",
     "time",
     "ls",
-    "touch"
+    "touch",
+    "cat"
 };
 
 
@@ -56,7 +58,8 @@ int (*builtin_func[])(char **) = {
     &bash_echo,
     &bash_time,
     &bash_ls,
-    &bash_touch
+    &bash_touch,
+    &bash_cat
 };
 
 
@@ -85,8 +88,6 @@ int bash_cd(char **args)
 	} 
     // Swap ~ or ./ with full home/current directory location
     else {
-        handle_path(args);
-
 		if(chdir(args[1]) != 0) {
 			perror(COLOR_RED("bash"));
 		}
@@ -120,7 +121,7 @@ int bash_exit(char **args)
 
 int bash_whoami(char **args)
 {
-    char* username = getenv("USER"); 
+    const char* username = getenv("USER"); 
     
     printf("User: " COLOR_CYAN("%s") "\n", username);
 
@@ -130,7 +131,7 @@ int bash_whoami(char **args)
 
 int bash_programmer(char **args) 
 {
-    char *code_author = "Nikola Kelava";    
+    const char *code_author = "Nikola Kelava";    
         
     printf("Written by: " COLOR_CYAN("%s") "\n", code_author);    
     
@@ -140,8 +141,8 @@ int bash_programmer(char **args)
 
 int bash_home(char **args)
 {
-    int last_element_index = get_args_count(args) - 1;
-    char *home_directory = args[last_element_index];
+    const int last_element_index = get_args_count(args) - 1;
+    const char *home_directory = args[last_element_index];
 
     printf("bash: %s: Is a home directory.\n", home_directory);
     
@@ -157,23 +158,29 @@ int bash_tilde(char **args)
 
 int bash_pwd(char **args)
 {
-    char *cwd = (char *)malloc(BASH_CWD_BUFSIZE);
+    char *cwd = malloc(BASH_CWD_BUFSIZE  * sizeof(char));
+
+    if(!cwd) {
+        fprintf(stderr, COLOR_RED("bash") ": allocation error\n");
+        return 1;
+    }
     
     printf("%s\n", getcwd(cwd, BASH_CWD_BUFSIZE));
-    
+
+    free(cwd);    
     return 1;
 }
 
 
 int bash_echo(char **args)
 {
+    int index;
+    const int args_count = get_args_count(args) - 1;  // -1 because last element of args is home directory path
+
     // If there is no argument to then echo print empty string
     if (args[1] == NULL) {
 		args[1] = "";
 	}
-
-    int index;
-    int args_count = get_args_count(args) - 1;  // -1 because last element of args is home directory path
     
     for(index = 1; index < args_count; ++index) {
         printf("%s ", args[index]);    
@@ -201,8 +208,6 @@ int bash_ls(char **args)
     DIR *dir_stream;
     struct dirent *dir_ptr;
 
-    handle_path(args);
-
     if((dir_stream = opendir(args[1])) == NULL) {
         perror(COLOR_RED("bash"));
         return 1;
@@ -225,10 +230,8 @@ int bash_ls(char **args)
 int bash_touch(char **args)
 {
     int index;
-    int args_count = get_args_count(args) - 1;
+    const int args_count = get_args_count(args) - 1;
     
-    handle_path(args);
-
     for(index = 1; index < args_count; ++index) {
         FILE* file_ptr = fopen(args[index], "w+");
 
@@ -236,6 +239,31 @@ int bash_touch(char **args)
             fprintf(stderr, COLOR_RED("bash") ": couldn't create the file.\n");
         }
 
+        fclose(file_ptr);
+    }
+    return 1;
+}
+
+
+int bash_cat(char **args)
+{
+    int index;
+    const int args_count = get_args_count(args) - 1;
+
+    for(index = 1; index < args_count; ++index) {
+        FILE *file_ptr = fopen(args[index], "r");
+        char *line = malloc(FILE_BUFFER_SIZE * sizeof(char));
+
+        if(!file_ptr) {
+            fprintf(stderr, COLOR_RED("bash") ": couldn't read the file.\n");
+            return 1;
+        }
+        else {
+            while(fgets(line, FILE_BUFFER_SIZE, file_ptr)) {
+                printf("%s", line);
+            }
+        }
+        free(line);
         fclose(file_ptr);
     }
     return 1;

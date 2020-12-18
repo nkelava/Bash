@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 
-int get_args_count(char **args) {
+int get_args_count(char **args) 
+{
     int counter;
 
     for(counter = 0; args[counter]; ++counter) {};
@@ -11,15 +13,15 @@ int get_args_count(char **args) {
 }
 
 
-int get_args_size(char **args) {
-    int index = 0, args_size = 0;
+void free_args(char **args, int last_element_index) 
+{
+    int index;
 
-    for(index = 0; args[index]; ++index) {
-        args_size += strlen(args[index]) * sizeof(char);
+    for(index = 0; index <= last_element_index; ++index) {
+        args[index] = NULL;    
     }
 
-    return args_size;
+    free(args);
+    args = NULL;
 }
-
-
 
