@@ -1,18 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <time.h> 
+#include <time.h>
 #include <string.h>
+#include <fcntl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <dirent.h>
+
+#include "arguments.h"
 
 #define BASH_CWD_BUFSIZE        256
 #define FILE_BUFFER_SIZE        1024
 #define COLOR_RED(string)       "\x1b[31m" string "\x1b[0m"
 #define COLOR_CYAN(string)      "\x1b[36m" string "\x1b[0m"
-
-#include "arguments.h"
-
 
 int bash_cd(char **args);
 int bash_help(char **args);
@@ -28,6 +29,7 @@ int bash_ls(char **args);
 int bash_touch(char **args);
 int bash_cat(char **args);
 int bash_cp(char **args);
+int bash_mv(char **args);
 
 
 char *builtin_str[] = {
@@ -44,7 +46,8 @@ char *builtin_str[] = {
     "ls",
     "touch",
     "cat",
-    "cp"
+    "cp",
+    "mv"
 };
 
 
@@ -62,7 +65,8 @@ int (*builtin_func[])(char **) = {
     &bash_ls,
     &bash_touch,
     &bash_cat,
-    &bash_cp
+    &bash_cp,
+    &bash_mv
 };
 
 
@@ -285,12 +289,16 @@ int bash_cp(char **args)
     const int dest_file_index = args_count - 1;
     FILE *dest_file = fopen(args[dest_file_index], "a");
 
+    
+    if(args_count == 1) {
+        fprintf(stderr, COLOR_RED("bash") ": expected arguments for %s command.\n", args[0]);
+        return 1;
+    }
+
     if(!dest_file) {
         fprintf(stderr, COLOR_RED("bash") ": couldn't find/open the file.\n");
         return 1;
      }
-
-    // If file doesnt' exist then create it
 
     for(index = 1; index < dest_file_index; ++index) {
         FILE *src_file = fopen(args[index], "r");
@@ -310,6 +318,32 @@ int bash_cp(char **args)
     }
 
     fclose(dest_file);
+    return 1;
+}
+
+
+int bash_mv(char **args)
+{
+    const int args_count = get_args_count(args) - 1;
+    char *source = args[1], *destination = args[2];
+    FILE *file_ptr;
+    
+    if(args_count != 3) {
+        fprintf(stderr, COLOR_RED("bash") ": expected 2 arguments (source/destination) for %s command.\n", args[0]);
+        return 1;
+    }
+
+    
+    if(access(destination, F_OK)) {
+        if(rename(source, destination) != 0) {
+            fprintf(stderr, COLOR_RED("bash") ": cannot move %s to %s.\n", source, destination);
+        }
+    }
+    else {
+        char *dest_file_name = strrchr(destination, '/');
+        fprintf(stderr, COLOR_RED("bash") ": cannot rename file %s to %s because %s already exists.\n", strrchr(source, '/'), dest_file_name, dest_file_name);
+    }
+
     return 1;
 }
 
