@@ -51,6 +51,25 @@ char *builtin_str[] = {
 };
 
 
+char *builtin_info[] = {
+    "ispisuje trenutni direktorij u kojem se korisnik nalazi",
+    "mijenja trenutni direktorij",
+    "prijkazuje popis naredbi i njihove opcije",
+    "izlazi iz ljuske",
+    "ispisuje trenutno logiranog korisnika",
+    "ispisuje ime developera projekta",
+    "ispisuje putanju home direktorija",
+    "ispisuje putanju home direktorija",
+    "ispisuje tekst koji navedemo kao argument",
+    "ispisuje trenutni datum i trenutno vrijeme",
+    "ispisuje sadrzaj direktorija",
+    "kreira datoteku",
+    "ispisuje sadrzaj datoteke",
+    "kopira datoteku iz jednog direktorija u drugi direktorij",
+    "premjesta datoteku iz jednom u drugi direktorij"
+};
+
+
 int (*builtin_func[])(char **) = {
 	&bash_cd,
 	&bash_help,
@@ -109,12 +128,12 @@ int bash_help(char **args)
 
     printf(COLOR_CYAN("Bash Shell") "\n");
 	printf("Type program names and arguments, and hit enter.\n");
-	printf("The following functions are built in: \n");
+	printf("The following functions are built in: \n\n");
 
 	for(index = 0; index < num_of_builtins; ++index) {
-		printf(" %s\n", builtin_str[index]);
+		printf(" %s - %s\n", builtin_str[index], builtin_info[index]);
 	}
-	printf("User the man command for information on other programs.\n");
+	printf("\nUser the man command for information on other programs.\n");
 	
     return 1;
 }
