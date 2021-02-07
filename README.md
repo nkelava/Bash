@@ -1,2 +1,2 @@
 # Bash
-Simple Bash project for college class
+Simple Bash project for university class
